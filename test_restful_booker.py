@@ -27,9 +27,18 @@ def test_service_up():
     assert response.text == "Created"
 
 
+def test_bookings_return():
+    url = urljoin(URL, "booking")
+    response = requests.request("GET", url)
+    assert response.status_code == 200
+    assert len(response.text) > 1
+    assert json.loads(response.text)[0]['bookingid']
+
+
+
 
 if __name__ == '__main__':
-    # token = create_auth_token(url="https://restful-booker.herokuapp.com/auth", password='password123')
+    # token = create_auth_token(password='password123')
     # https://restful-booker.herokuapp.com/apidoc/index.html
     # random_name = Provider.first_names[random.randint(0, len(Provider.first_names))]
-    test_service_up()
+    test_bookings_return()
