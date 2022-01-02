@@ -5,11 +5,14 @@ import requests
 import json
 from urllib.parse import urljoin
 import random
+import pytest
 
 
 URL = "https://restful-booker.herokuapp.com"
 
 
+@pytest.mark.is_up
+@pytest.mark.quick
 def test_service_up():
     url = urljoin(URL, "ping")
     response = requests.request("GET", url)
@@ -17,6 +20,7 @@ def test_service_up():
     assert response.text == "Created"
 
 
+@pytest.mark.quick
 def test_bookings_return():
     url = urljoin(URL, "booking")
     response = requests.request("GET", url)
@@ -25,6 +29,7 @@ def test_bookings_return():
     assert json.loads(response.text)[0]['bookingid']
 
 
+@pytest.mark.quick
 def test_creating_booking():
     url = urljoin(URL, "booking")
     check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
@@ -35,11 +40,12 @@ def test_creating_booking():
     assert json_response['booking']['lastname'] == last_name
     assert json_response['booking']['totalprice'] == price
     assert json_response['booking']['depositpaid'] == deposit
-    assert json_response['booking']['bookingdates']['checkin'] == check_in.split(' ')[0]
-    assert json_response['booking']['bookingdates']['checkout'] == check_out.split(' ')[0]
+    assert json_response['booking']['bookingdates']['checkin'] == str(check_in).split(' ')[0]
+    assert json_response['booking']['bookingdates']['checkout'] == str(check_out).split(' ')[0]
     assert json_response['booking']['additionalneeds'] == needs
 
 
+@pytest.mark.quick
 def test_search_by_name():
     booking_id_list = []
     create_booking_url = urljoin(URL, "booking")
@@ -56,6 +62,7 @@ def test_search_by_name():
     assert json_create_call['bookingid'] in booking_id_list
 
 
+@pytest.mark.quick
 def test_update_booking():
     create_booking_url = urljoin(URL, "booking")
     check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
@@ -75,6 +82,26 @@ def test_update_booking():
     assert json_response['bookingdates']['checkin'] == str(c_in).split(' ')[0]
     assert json_response['bookingdates']['checkout'] == str(c_out).split(' ')[0]
     assert json_response['additionalneeds'] == nds
+
+
+@pytest.mark.quick
+def test_delete_booking():
+    create_booking_url = urljoin(URL, "booking")
+    check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
+    create_call = requests.request("POST", create_booking_url, headers=headers, data=payload)
+    json_create_call = json.loads(create_call.text)
+
+    delete_url = urljoin(URL, f"booking/{json_create_call['bookingid']}")
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Basic YWRtaW46cGFzc3dvcmQxMjM=',
+        'Content-Type': 'application/json'
+    }
+    delete_response = requests.request("DELETE", delete_url, headers=headers)
+    assert delete_response.status_code == 201
+    search_by_id_url = urljoin(URL, f"booking/{json_create_call['bookingid']}")
+    search_by_id_response = requests.request("get", search_by_id_url)
+    assert search_by_id_response.status_code == 404
 
 
 def create_booking_json():
@@ -142,11 +169,3 @@ def create_auth_token(password):
     }
     response = requests.request("POST", url, headers=headers, data=payload)
     return json.loads(response.text)['token']
-
-
-if __name__ == '__main__':
-    # token = create_auth_token(password='password123')
-    # https://restful-booker.herokuapp.com/apidoc/index.html
-    # random_name = Provider.first_names[random.randint(0, len(Provider.first_names))]
-    # test_bookings_return()
-    thing = test_update_booking()
