@@ -9,17 +9,7 @@ from faker.providers.person.en import Provider as person_faker
 URL = "https://restful-booker.herokuapp.com"
 
 
-def create_auth_token(password):
-    url = urljoin(URL, "auth")
-    payload = json.dumps({
-      "username": "admin",
-      "password": password
-    })
-    headers = {
-      'Content-Type': 'application/json'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload)
-    return json.loads(response.text)['token']
+
 
 
 def test_service_up():
@@ -39,6 +29,31 @@ def test_bookings_return():
 
 def test_creating_booking():
     url = urljoin(URL, "booking")
+    check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
+    response = requests.request("POST", url, headers=headers, data=payload)
+    json_response = json.loads(response.text)
+    assert response.status_code == 200
+    assert json_response['booking']['firstname'] == first_name
+    assert json_response['booking']['lastname'] == last_name
+    assert json_response['booking']['totalprice'] == price
+    assert json_response['booking']['depositpaid'] == deposit
+    assert json_response['booking']['bookingdates']['checkin'] == check_in.split(' ')[0]
+    assert json_response['booking']['bookingdates']['checkout'] == check_out.split(' ')[0]
+    assert json_response['booking']['additionalneeds'] == needs
+
+
+def test_search_by_name():
+    create_booking_url = urljoin(URL, "booking")
+    check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
+    create_call = requests.request("POST", create_booking_url, headers=headers, data=payload)
+    json_create_call = json.loads(create_call.text)
+    search_url = urljoin(URL, f"booking?firstname={first_name}&lastname={last_name}")
+    search_call = requests.request("GET", search_url)
+    json_search_booking_call = json.loads(search_call.text)
+    assert json_create_call['bookingid'] == json_search_booking_call[0]['bookingid']
+
+
+def create_booking_json():
     fake = faker.Faker()
     first_name = fake.first_name()
     last_name = fake.last_name()
@@ -61,17 +76,20 @@ def test_creating_booking():
     headers = {
         'Content-Type': 'application/json'
     }
-    response = requests.request("POST", url, headers=headers, data=payload)
-    json_response = json.loads(response.text)
-    assert response.status_code == 200
-    assert json_response['booking']['firstname'] == first_name
-    assert json_response['booking']['lastname'] == last_name
-    assert json_response['booking']['totalprice'] == price
-    assert json_response['booking']['depositpaid'] == deposit
-    assert json_response['booking']['bookingdates']['checkin'] == check_in.split(' ')[0]
-    assert json_response['booking']['bookingdates']['checkout'] == check_out.split(' ')[0]
-    assert json_response['booking']['additionalneeds'] == needs
+    return check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price
 
+
+def create_auth_token(password):
+    url = urljoin(URL, "auth")
+    payload = json.dumps({
+      "username": "admin",
+      "password": password
+    })
+    headers = {
+      'Content-Type': 'application/json'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+    return json.loads(response.text)['token']
 
 
 if __name__ == '__main__':
@@ -79,4 +97,4 @@ if __name__ == '__main__':
     # https://restful-booker.herokuapp.com/apidoc/index.html
     # random_name = Provider.first_names[random.randint(0, len(Provider.first_names))]
     # test_bookings_return()
-    thing = test_creating_booking()
+    thing = test_search_by_name()
