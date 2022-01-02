@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import faker
 import requests
 import json
@@ -7,9 +9,6 @@ from faker.providers.person.en import Provider as person_faker
 
 
 URL = "https://restful-booker.herokuapp.com"
-
-
-
 
 
 def test_service_up():
@@ -43,24 +42,29 @@ def test_creating_booking():
 
 
 def test_search_by_name():
+    booking_id_list = []
     create_booking_url = urljoin(URL, "booking")
     check_in, check_out, deposit, first_name, headers, last_name, needs, payload, price = create_booking_json()
     create_call = requests.request("POST", create_booking_url, headers=headers, data=payload)
+
     json_create_call = json.loads(create_call.text)
     search_url = urljoin(URL, f"booking?firstname={first_name}&lastname={last_name}")
     search_call = requests.request("GET", search_url)
+
     json_search_booking_call = json.loads(search_call.text)
-    assert json_create_call['bookingid'] == json_search_booking_call[0]['bookingid']
+    for entry in json_search_booking_call:
+        booking_id_list.append(entry['bookingid'])
+    assert json_create_call['bookingid'] in booking_id_list
 
 
 def create_booking_json():
     fake = faker.Faker()
     first_name = fake.first_name()
     last_name = fake.last_name()
-    price = random.randint(0, 99999)
+    price = random.randint(0, 99999)/100
     deposit = random.choice([True, False])
-    check_in = str(fake.date_time_this_decade())
-    check_out = str(fake.date_time_this_decade())
+    check_in = fake.date_time_this_decade()
+    check_out = check_in + timedelta(days=random.randint(0, 240))
     needs = fake.word()
     payload = json.dumps({
         "firstname": first_name,
@@ -68,8 +72,8 @@ def create_booking_json():
         "totalprice": price,
         "depositpaid": deposit,
         "bookingdates": {
-            "checkin": check_in,
-            "checkout": check_out
+            "checkin": str(check_in),
+            "checkout": str(check_out)
         },
         "additionalneeds": needs
     })
